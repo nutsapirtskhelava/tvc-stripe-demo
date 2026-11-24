@@ -1,6 +1,7 @@
 .DS_Store
 __pycache__/
 data/
+.venv/
 
 # de-identified subject-level files: not for git/GitHub, even de-identified
 AIM TvC Subjects Deidentified (Amblyopia).csv
