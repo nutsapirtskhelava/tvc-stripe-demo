@@ -58,14 +58,33 @@ def build_model_frame():
     return df
 
 
-def fit_and_report(df, param, with_age):
+def fit_and_report(df, param, with_age, verbose=True):
     formula = f"log10_{param} ~ Group * Eye2" + (" + Age" if with_age else "")
     model = smf.mixedlm(formula, df, groups=df["Subject"])
     result = model.fit(reml=False)
-    label = "WITH age covariate" if with_age else "WITHOUT age (matches .m script)"
-    print(f"\n--- {param}: {label} ---")
-    print(result.summary().tables[1])
+    if verbose:
+        label = "WITH age covariate" if with_age else "WITHOUT age (matches .m script)"
+        print(f"\n--- {param}: {label} ---")
+        print(result.summary().tables[1])
     return result
+
+
+def summarize_for_dashboard():
+    """Structured summary (no printing) for embedding in the results dashboard."""
+    df = build_model_frame()
+    rows = []
+    for param in ["IN", "Psi"]:
+        for with_age in [False, True]:
+            r = fit_and_report(df, param, with_age, verbose=False)
+            rows.append({
+                "parameter": param,
+                "with_age": with_age,
+                "group_coef": round(float(r.params.get("Group[T.Control]", float("nan"))), 4),
+                "group_p": round(float(r.pvalues.get("Group[T.Control]", float("nan"))), 4),
+                "age_coef": round(float(r.params["Age"]), 4) if with_age else None,
+                "age_p": round(float(r.pvalues["Age"]), 4) if with_age else None,
+            })
+    return rows
 
 
 def main():

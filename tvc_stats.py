@@ -141,6 +141,31 @@ def paired_test(df_a, df_b, label_a, label_b, param):
     }
 
 
+def interocular_diff_test(final):
+    """
+    Per-subject |eye1 - eye2| magnitude, Amblyopia vs Control -- independent
+    groups. Matches analyze_WF_internal_noise.m's "Interocular diff: Amblyopia
+    vs Control" row, but kept as its OWN result (not folded into the 4-test
+    Holm family above): the .m script also treats this as part of a separate,
+    larger comparison family, not the "PI COMPARISONS" family.
+    """
+    rows = []
+    for param in PARAMETERS:
+        control = final[final["EyeStatus"] == "Control"].pivot(index="Subject", columns="Eye", values=param)
+        control_diff = (control["OD"] - control["OS"]).abs()
+
+        amb = final[final["EyeStatus"].isin(["Fellow", "Amblyopic"])]
+        amb_pivot = amb.pivot(index="Subject", columns="EyeStatus", values=param)
+        amb_diff = (amb_pivot["Amblyopic"] - amb_pivot["Fellow"]).abs()
+
+        result = independent_test(
+            amb_diff.values, control_diff.values,
+            "Amblyopia |AE-FE|", "Control |OD-OS|", param,
+        )
+        rows.append(result)
+    return rows
+
+
 def run_self_check():
     """
     Sanity check on the test functions themselves, not the real data: plant a

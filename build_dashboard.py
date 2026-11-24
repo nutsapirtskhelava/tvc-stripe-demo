@@ -22,6 +22,8 @@ import json
 import pandas as pd
 
 from plot_tvc_curves import load_final_rows, geometric_mean
+from tvc_stats import interocular_diff_test
+from tvc_age_covariate import summarize_for_dashboard as age_covariate_summary
 
 STATS_CSV = "results/tvc_stats_table.csv"
 DATA_OUT = "dashboard_data.json"
@@ -104,6 +106,8 @@ def main():
         "groupMeans": group_means,
         "stats": export_stats(group_means),
         "mcd": MCD,
+        "interocularDiff": interocular_diff_test(final),
+        "ageCovariate": age_covariate_summary(),
     }
     with open(DATA_OUT, "w") as f:
         json.dump(data, f, indent=2)
@@ -310,12 +314,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .panel-title { font-size: 13px; color: #444; margin-bottom: 6px; }
   svg text { font-family: inherit; fill: var(--muted); }
   svg .axis-line { stroke: var(--hairline); stroke-width: 1; }
+
+  .matlab-fig-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+    margin: 24px 0 8px;
+  }
+  .matlab-fig-grid figure { margin: 0; }
+  .matlab-fig-grid img { width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--hairline); }
+  .matlab-fig-grid figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <p class="eyebrow">BEHAVIORAL &middot; ORIENTATION DISCRIMINATION &middot; THRESHOLD VS CONTRAST</p>
+  <p class="eyebrow">BEHAVIORAL &middot; ORIENTATION DISCRIMINATION &middot; THRESHOLD VS CONTRAST &middot;
+    <a href="index.html" style="color:inherit;">&larr; stripe-ring task demo</a></p>
   <h1 class="title">Internal Noise &amp; Weber Fraction<br>in Amblyopia</h1>
   <p class="subtitle">
     How much does each eye's contrast-discrimination threshold rise with pedestal contrast?
@@ -362,6 +377,47 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <table class="data-table" id="statsTable"></table>
   <p class="footnote">Effect size = Cohen's d (independent) / dz (paired) on log10 values, with approx. 95% CI (Hedges normal approximation). None of the 8 comparisons reach significance after Holm correction, given the small amblyopic-eye groups (n=6) &mdash; but Psi shows a consistent moderate-to-large effect in the expected direction (amblyopic eye worse) that IN does not. <strong>|&Delta; mean| vs MCD</strong> compares the raw group-mean difference against the "minimum detectable cohort difference" reported in the AIM-TvC+ method paper's own test-retest data (IN: 0.0023, Psi: 0.1079) &mdash; an independent, non-circular check: both Psi comparisons involving the amblyopic eye exceed this reference, while neither IN comparison does.</p>
+
+  <hr class="rule">
+
+  <p class="q-eyebrow">QUESTION 3</p>
+  <h2 class="question">Is the interocular gap itself bigger in amblyopia?</h2>
+  <p class="question-sub">
+    Per-subject |eye1 &minus; eye2| magnitude (|AE&minus;FE| for amblyopes, |OD&minus;OS| for controls), compared
+    between groups &mdash; independent of which specific eye-pair comparison above. Kept as its own result,
+    not pooled into the Holm family above (matches analyze_WF_internal_noise.m's separate comparison family).
+  </p>
+  <table class="data-table" id="interocularTable"></table>
+
+  <hr class="rule">
+
+  <p class="q-eyebrow">QUESTION 4</p>
+  <h2 class="question">Does age matter?</h2>
+  <p class="question-sub">
+    This is a developmental sample (ages 6&ndash;17); amblyopia and control groups are age-matched
+    (p=0.64, not shown), but a mixed model checks whether adding Age as a covariate changes the Group effect.
+  </p>
+  <table class="data-table" id="ageTable"></table>
+  <p class="footnote">Model: log10(parameter) ~ Group &times; Eye (+ Age), Subject as random intercept. Age is not
+    a significant predictor for either parameter, and barely moves the Group coefficient or its p-value &mdash;
+    age isn't masking or confounding the Group/Eye results.</p>
+
+  <hr class="rule">
+
+  <p class="q-eyebrow">ADDITIONAL FIGURES</p>
+  <h2 class="question">From analyze_WF_internal_noise.m</h2>
+  <p class="question-sub">
+    The lab's existing MATLAB pipeline (group comparisons, mixed models, IN/Psi correlation, convergence
+    across charts) on the same data, same exclusions. Full numeric output:
+    <a href="results/WF_IN_results.xlsx" style="color:inherit;">results/WF_IN_results.xlsx</a>.
+  </p>
+  <div class="matlab-fig-grid">
+    <figure><img src="results/Fig1_final_by_group_eye.png" alt="Final estimates by group and eye"><figcaption>Final estimates by group &amp; eye</figcaption></figure>
+    <figure><img src="results/Fig1b_control_FE_AE.png" alt="Control vs Fellow/Amblyopic eye"><figcaption>Control vs Fellow/Amblyopic eye</figcaption></figure>
+    <figure><img src="results/Fig2_IN_vs_WF.png" alt="IN vs Weber fraction correlation"><figcaption>IN vs Weber fraction correlation</figcaption></figure>
+    <figure><img src="results/Fig3_convergence_across_charts.png" alt="Convergence across charts"><figcaption>Convergence across charts</figcaption></figure>
+    <figure><img src="results/Fig4_interocular_difference.png" alt="Interocular difference"><figcaption>Interocular difference (per-subject)</figcaption></figure>
+  </div>
 
   <hr class="rule">
   <p class="footnote">
@@ -525,6 +581,31 @@ document.getElementById('paramPills').addEventListener('click', e => {
   btn.classList.add('active');
   renderStatsTable(btn.dataset.param);
 });
+
+// ---- Question 3: interocular difference, Amblyopia vs Control ----
+const interocularTable = document.getElementById('interocularTable');
+interocularTable.innerHTML = `<tr><th>Parameter</th><th>Comparison</th><th class="num">n1</th><th class="num">n2</th>
+  <th class="num">t_p</th><th class="num">u_p</th><th class="num">Effect size</th><th class="num">95% CI</th></tr>` +
+  DATA.interocularDiff.map(r => `<tr>
+    <td>${r.parameter}</td><td>${r.comparison}</td>
+    <td class="num">${r.n1}</td><td class="num">${r.n2}</td>
+    <td class="num">${r.t_p.toFixed(3)}</td>
+    <td class="num">${r.u_p.toFixed(3)}</td>
+    <td class="num">${r.effect_size.toFixed(2)}</td>
+    <td class="num">[${r.ci_low.toFixed(2)}, ${r.ci_high.toFixed(2)}]</td>
+  </tr>`).join('');
+
+// ---- Question 4: age covariate ----
+const ageTable = document.getElementById('ageTable');
+ageTable.innerHTML = `<tr><th>Parameter</th><th>Model</th><th class="num">Group coef.</th><th class="num">Group p</th>
+  <th class="num">Age coef.</th><th class="num">Age p</th></tr>` +
+  DATA.ageCovariate.map(r => `<tr>
+    <td>${r.parameter}</td><td>${r.with_age ? '+ Age' : 'no age'}</td>
+    <td class="num">${r.group_coef.toFixed(3)}</td>
+    <td class="num">${r.group_p.toFixed(3)}</td>
+    <td class="num">${r.age_coef !== null ? r.age_coef.toFixed(3) : '&mdash;'}</td>
+    <td class="num">${r.age_p !== null ? r.age_p.toFixed(3) : '&mdash;'}</td>
+  </tr>`).join('');
 </script>
 </body>
 </html>

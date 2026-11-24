@@ -564,5 +564,71 @@
   "mcd": {
     "IN": 0.0023,
     "Psi": 0.1079
-  }
+  },
+  "interocularDiff": [
+    {
+      "comparison": "Amblyopia |AE-FE| vs Control |OD-OS|",
+      "parameter": "IN",
+      "design": "independent",
+      "n1": 6,
+      "n2": 11,
+      "t_stat": -1.7536311729614098,
+      "t_p": 0.10262390557382961,
+      "u_stat": 18.5,
+      "u_p": 0.15915597452001962,
+      "effect_size": -0.8145758407797158,
+      "effect_label": "Cohen's d (log10 scale)",
+      "ci_low": -1.8511426477059638,
+      "ci_high": 0.22199096614653213
+    },
+    {
+      "comparison": "Amblyopia |AE-FE| vs Control |OD-OS|",
+      "parameter": "Psi",
+      "design": "independent",
+      "n1": 6,
+      "n2": 11,
+      "t_stat": -0.5167959737804338,
+      "t_p": 0.6192843966135919,
+      "u_stat": 29.0,
+      "u_p": 0.732546864899806,
+      "effect_size": -0.2887800946600599,
+      "effect_label": "Cohen's d (log10 scale)",
+      "ci_low": -1.288871041870959,
+      "ci_high": 0.7113108525508394
+    }
+  ],
+  "ageCovariate": [
+    {
+      "parameter": "IN",
+      "with_age": false,
+      "group_coef": 0.1082,
+      "group_p": 0.4215,
+      "age_coef": null,
+      "age_p": null
+    },
+    {
+      "parameter": "IN",
+      "with_age": true,
+      "group_coef": 0.1186,
+      "group_p": 0.3762,
+      "age_coef": -0.0122,
+      "age_p": 0.499
+    },
+    {
+      "parameter": "Psi",
+      "with_age": false,
+      "group_coef": -0.095,
+      "group_p": 0.2242,
+      "age_coef": null,
+      "age_p": null
+    },
+    {
+      "parameter": "Psi",
+      "with_age": true,
+      "group_coef": -0.0856,
+      "group_p": 0.2626,
+      "age_coef": -0.011,
+      "age_p": 0.2483
+    }
+  ]
 }
