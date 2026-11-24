@@ -427,10 +427,36 @@ function svgEl(tag, attrs) {
 }
 
 // draws one log-log TvC panel into an existing <svg>, given a list of {IN, Psi, color}
+// Picks readable log-scale tick values (powers of 10, falling back to 2x/5x
+// multiples when the visible range spans less than one decade) within
+// [10^loExp, 10^hiExp].
+function niceLogTicks(loExp, hiExp) {
+  const ticks = [];
+  const eLo = Math.floor(loExp), eHi = Math.ceil(hiExp);
+  for (let e = eLo; e <= eHi; e++) {
+    const lv = e;
+    if (lv >= loExp - 1e-9 && lv <= hiExp + 1e-9) ticks.push(Math.pow(10, e));
+  }
+  if (ticks.length < 2) {
+    const e = Math.round((loExp + hiExp) / 2);
+    [1, 2, 5].forEach(mult => {
+      const v = mult * Math.pow(10, e);
+      const lv = Math.log10(v);
+      if (lv >= loExp && lv <= hiExp) ticks.push(v);
+    });
+  }
+  return Array.from(new Set(ticks)).sort((a, b) => a - b);
+}
+
+function fmtTick(v) {
+  if (v >= 1) return String(v);
+  return String(parseFloat(v.toPrecision(2)));
+}
+
 function drawPanel(svg, curves, opts) {
   opts = opts || {};
   const W = svg.viewBox.baseVal.width, H = svg.viewBox.baseVal.height;
-  const m = { left: 34, right: 8, top: 6, bottom: 20 };
+  const m = { left: 38, right: 8, top: 6, bottom: 20 };
   const innerW = W - m.left - m.right, innerH = H - m.top - m.bottom;
 
   let yMin = Infinity, yMax = -Infinity;
@@ -457,6 +483,18 @@ function drawPanel(svg, curves, opts) {
       svg.appendChild(t);
     });
   }
+
+  niceLogTicks(yLo, yHi).forEach(v => {
+    const y = py(v);
+    svg.appendChild(svgEl('line', {
+      x1: m.left - 3, y1: y, x2: m.left, y2: y, class: 'axis-line',
+    }));
+    const t = svgEl('text', {
+      x: m.left - 6, y: y, 'font-size': 9, 'text-anchor': 'end', 'dominant-baseline': 'middle',
+    });
+    t.textContent = fmtTick(v);
+    svg.appendChild(t);
+  });
 
   series.forEach(s => {
     const d = CONTRASTS.map((c, i) => `${i === 0 ? 'M' : 'L'}${px(c).toFixed(1)},${py(s.ys[i]).toFixed(1)}`).join(' ');
