@@ -25,6 +25,10 @@ IN/Psi, matching analyze_WF_internal_noise.m's log10-scale convention -- these
 are right-skewed, zero-bounded parameters, so geometric mean is less distorted
 by the handful of subjects pinned at the Psi=2.0 model ceiling.
 
+Each panel also shows thin individual per-subject/eye curves (own fitted IN/Psi,
+not the group mean) behind the bold group-mean curve, so you can see the
+spread the mean is summarizing, not just the average.
+
 Usage:
     python3 plot_tvc_curves.py
 Output:
@@ -120,8 +124,18 @@ def main():
             mean_psi = geometric_mean(g["Psi"].values)
             print(f"  {label}: n={n}, geomean IN={mean_in:.4f}, geomean Psi={mean_psi:.4f}")
 
+            # thin per-subject curves first (own IN/Psi, not the group mean), so the
+            # bold group-mean line drawn after them sits on top and stays readable
+            group_color = None
+            for _, row in g.iterrows():
+                subject_curve = tvc_threshold(CONTRAST_RANGE, row["IN"], row["Psi"])
+                line, = ax.plot(CONTRAST_RANGE, subject_curve, linewidth=0.8, alpha=0.25,
+                                 color=group_color, zorder=1)
+                group_color = group_color or line.get_color()
+
             curve = tvc_threshold(CONTRAST_RANGE, mean_in, mean_psi)
-            ax.plot(CONTRAST_RANGE, curve, label=f"{label} (n={n})", linewidth=2)
+            ax.plot(CONTRAST_RANGE, curve, label=f"{label} (n={n})", linewidth=2.5,
+                     color=group_color, zorder=3)
 
         ax.set_xscale("log")
         ax.set_yscale("log")
