@@ -30,6 +30,18 @@
 
 clear; close all; clc;
 
+%% ===================== VISUAL STYLE (matches results dashboard) =====================
+set(groot, 'defaultAxesFontName', 'Helvetica');
+set(groot, 'defaultTextFontName', 'Helvetica');
+set(groot, 'defaultAxesFontSize', 11);
+set(groot, 'defaultAxesTitleFontWeight', 'normal');
+set(groot, 'defaultAxesTitleFontSizeMultiplier', 1.15);
+set(groot, 'defaultAxesXColor', [0.35 0.37 0.40]);
+set(groot, 'defaultAxesYColor', [0.35 0.37 0.40]);
+set(groot, 'defaultAxesGridColor', [0.90 0.91 0.92]);
+set(groot, 'defaultAxesGridAlpha', 1);
+set(groot, 'defaultAxesBox', 'off');
+
 %% ===================== USER SETTINGS =====================
 dataFile      = 'amblyopia_control_OD_OS_all_subjects-2.xlsx';  % file with EyeStatus column
 sheetName     = 'AllData';
@@ -46,7 +58,7 @@ wfUpperBound  = 2;       % Psi = 2 looks like the upper edge of the parameter gr
 excludeBoundaryValues = false;  % true = set boundary values to NaN
 excludeOutliers       = false;  % true = set MAD outliers (log scale) to NaN
 
-excludeSubjects = [26];  % whole subjects to drop (26: did not understand the task)
+excludeSubjects = [26, 32];  % whole subjects to drop (26: did not understand the task; 32: no TvC data recorded)
 
 convStat      = 'median'; % Fig3 summary: 'median' (median + IQR) or 'mean' (geometric mean +/- SEM)
 showIDs       = true;    % participant IDs on the last figure (Fig4, interocular difference)
@@ -72,8 +84,8 @@ grpNames = ["Control","Amblyopia"];
 eyeNames = ["OD","OS"];
 params   = {inVar, wfVar};
 pLabel   = {'Internal noise', 'Weber fraction'};
-cols     = [0.00 0.45 0.74;    % Control
-            0.85 0.33 0.10];   % Amblyopia
+cols     = [0.106 0.227 0.369;   % Control  (navy  #1b3a5e, matches dashboard)
+            0.757 0.267 0.055];  % Amblyopia (orange #c1440e, matches dashboard)
 
 if useLog
     tf = @(x) log10(max(x, logFloor));
@@ -451,7 +463,7 @@ for p = 1:numel(params)
     ylabel(sprintf('%s (%s)', pLabel{p}, params{p}));
     title(pLabel{p});
 end
-sgtitle('Final estimates: lines connect the two eyes of each subject; black bar = median');
+sgtitle('Final estimates: lines connect the two eyes of each subject; black bar = median', 'FontWeight','normal', 'Color',[0.35 0.37 0.40]);
 saveFig(fig1, fullfile(outDir,'Fig1_final_by_group_eye.png'));
 
 % 7b. Control vs FE vs AE
@@ -544,9 +556,9 @@ for p = 1:numel(params)
     if p==1, legend(h, lg, 'Location','best'); end
 end
 if strcmp(convStat,'median')
-    sgtitle('Estimates across charts (median, error bars = interquartile range)');
+    sgtitle('Estimates across charts (median, error bars = interquartile range)', 'FontWeight','normal', 'Color',[0.35 0.37 0.40]);
 else
-    sgtitle(sprintf('Estimates across charts (%s mean \\pm SEM)', ternary(useLog,'geometric','arithmetic')));
+    sgtitle(sprintf('Estimates across charts (%s mean \\pm SEM)', ternary(useLog,'geometric','arithmetic')), 'FontWeight','normal', 'Color',[0.35 0.37 0.40]);
 end
 saveFig(fig3, fullfile(outDir,'Fig3_convergence_across_charts.png'));
 

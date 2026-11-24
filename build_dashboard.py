@@ -22,8 +22,6 @@ import json
 import pandas as pd
 
 from plot_tvc_curves import load_final_rows, geometric_mean
-from tvc_stats import interocular_diff_test
-from tvc_age_covariate import summarize_for_dashboard as age_covariate_summary
 
 STATS_CSV = "results/tvc_stats_table.csv"
 DATA_OUT = "dashboard_data.json"
@@ -106,8 +104,6 @@ def main():
         "groupMeans": group_means,
         "stats": export_stats(group_means),
         "mcd": MCD,
-        "interocularDiff": interocular_diff_test(final),
-        "ageCovariate": age_covariate_summary(),
     }
     with open(DATA_OUT, "w") as f:
         json.dump(data, f, indent=2)
@@ -380,30 +376,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <hr class="rule">
 
-  <p class="q-eyebrow">QUESTION 3</p>
-  <h2 class="question">Is the interocular gap itself bigger in amblyopia?</h2>
-  <p class="question-sub">
-    Per-subject |eye1 &minus; eye2| magnitude (|AE&minus;FE| for amblyopes, |OD&minus;OS| for controls), compared
-    between groups &mdash; independent of which specific eye-pair comparison above. Kept as its own result,
-    not pooled into the Holm family above (matches analyze_WF_internal_noise.m's separate comparison family).
-  </p>
-  <table class="data-table" id="interocularTable"></table>
-
-  <hr class="rule">
-
-  <p class="q-eyebrow">QUESTION 4</p>
-  <h2 class="question">Does age matter?</h2>
-  <p class="question-sub">
-    This is a developmental sample (ages 6&ndash;17); amblyopia and control groups are age-matched
-    (p=0.64, not shown), but a mixed model checks whether adding Age as a covariate changes the Group effect.
-  </p>
-  <table class="data-table" id="ageTable"></table>
-  <p class="footnote">Model: log10(parameter) ~ Group &times; Eye (+ Age), Subject as random intercept. Age is not
-    a significant predictor for either parameter, and barely moves the Group coefficient or its p-value &mdash;
-    age isn't masking or confounding the Group/Eye results.</p>
-
-  <hr class="rule">
-
   <p class="q-eyebrow">ADDITIONAL FIGURES</p>
   <h2 class="question">From analyze_WF_internal_noise.m</h2>
   <p class="question-sub">
@@ -582,30 +554,6 @@ document.getElementById('paramPills').addEventListener('click', e => {
   renderStatsTable(btn.dataset.param);
 });
 
-// ---- Question 3: interocular difference, Amblyopia vs Control ----
-const interocularTable = document.getElementById('interocularTable');
-interocularTable.innerHTML = `<tr><th>Parameter</th><th>Comparison</th><th class="num">n1</th><th class="num">n2</th>
-  <th class="num">t_p</th><th class="num">u_p</th><th class="num">Effect size</th><th class="num">95% CI</th></tr>` +
-  DATA.interocularDiff.map(r => `<tr>
-    <td>${r.parameter}</td><td>${r.comparison}</td>
-    <td class="num">${r.n1}</td><td class="num">${r.n2}</td>
-    <td class="num">${r.t_p.toFixed(3)}</td>
-    <td class="num">${r.u_p.toFixed(3)}</td>
-    <td class="num">${r.effect_size.toFixed(2)}</td>
-    <td class="num">[${r.ci_low.toFixed(2)}, ${r.ci_high.toFixed(2)}]</td>
-  </tr>`).join('');
-
-// ---- Question 4: age covariate ----
-const ageTable = document.getElementById('ageTable');
-ageTable.innerHTML = `<tr><th>Parameter</th><th>Model</th><th class="num">Group coef.</th><th class="num">Group p</th>
-  <th class="num">Age coef.</th><th class="num">Age p</th></tr>` +
-  DATA.ageCovariate.map(r => `<tr>
-    <td>${r.parameter}</td><td>${r.with_age ? '+ Age' : 'no age'}</td>
-    <td class="num">${r.group_coef.toFixed(3)}</td>
-    <td class="num">${r.group_p.toFixed(3)}</td>
-    <td class="num">${r.age_coef !== null ? r.age_coef.toFixed(3) : '&mdash;'}</td>
-    <td class="num">${r.age_p !== null ? r.age_p.toFixed(3) : '&mdash;'}</td>
-  </tr>`).join('');
 </script>
 </body>
 </html>
