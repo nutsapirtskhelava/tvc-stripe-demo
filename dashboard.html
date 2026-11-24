@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TvC in Amblyopia &mdash; Internal Noise &amp; Weber Fraction</title>
+<style>
+  :root {
+    --ink: #17191c;
+    --muted: #8a8f98;
+    --faint: #c7cad0;
+    --hairline: #e6e7ea;
+    --bg: #ffffff;
+    --blue: #1b3a5e;
+    --orange: #c1440e;
+    --pill-bg: #f3f4f6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 72px 28px 120px; }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 18px;
+    font-weight: 500;
+  }
+  h1.title {
+    font-size: 56px;
+    line-height: 1.05;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin: 0 0 24px;
+  }
+  p.subtitle {
+    font-size: 19px;
+    line-height: 1.5;
+    color: #555;
+    max-width: 720px;
+    margin: 0 0 40px;
+  }
+  .legend {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 14px;
+    color: #444;
+    margin-bottom: 8px;
+  }
+  .legend .swatch {
+    display: inline-block;
+    width: 22px;
+    height: 2px;
+    margin-right: 8px;
+    vertical-align: middle;
+    position: relative;
+    top: -2px;
+  }
+  .swatch.blue { background: var(--blue); }
+  .swatch.orange { background: var(--orange); }
+  hr.rule {
+    border: none;
+    border-top: 1px solid var(--hairline);
+    margin: 48px 0;
+  }
+  .q-eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 10px;
+    font-weight: 500;
+  }
+  h2.question {
+    font-size: 30px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    margin: 0 0 14px;
+  }
+  p.question-sub {
+    font-size: 16px;
+    color: #555;
+    line-height: 1.55;
+    max-width: 680px;
+    margin: 0 0 28px;
+  }
+  .pillgroup {
+    display: inline-flex;
+    background: var(--pill-bg);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+    margin-right: 20px;
+    margin-bottom: 24px;
+  }
+  .pillgroup button {
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    color: #444;
+    font-family: inherit;
+  }
+  .pillgroup button.active {
+    background: var(--ink);
+    color: #fff;
+  }
+  .control-label {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .controls-row { margin-bottom: 8px; }
+
+  .subject-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 18px;
+    margin: 28px 0 8px;
+  }
+  .subject-panel {
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 10px 10px 6px;
+  }
+  .subject-panel:hover { border-color: var(--faint); }
+  .subject-panel-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 2px;
+  }
+  .subject-panel-head .sid { font-weight: 600; color: var(--ink); }
+  .subject-panel-head .grp { color: var(--muted); }
+
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 20px 0 8px;
+  }
+  table.data-table th {
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--hairline);
+    white-space: nowrap;
+  }
+  table.data-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--hairline);
+    color: #333;
+    white-space: nowrap;
+  }
+  table.data-table td.num, table.data-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data-table tr:last-child td { border-bottom: none; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; }
+  .dot.blue { background: var(--blue); }
+  .dot.orange { background: var(--orange); }
+  .bound-mark { color: var(--orange); cursor: default; }
+  .footnote { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 14px; max-width: 680px; }
+
+  .sig { font-weight: 600; }
+  .sig.yes { color: #0a7a3d; }
+  .sig.no { color: var(--muted); font-weight: 400; }
+
+  .group-curve-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin: 28px 0 8px;
+  }
+  @media (max-width: 900px) {
+    .group-curve-grid { grid-template-columns: 1fr; }
+    h1.title { font-size: 38px; }
+  }
+  .panel-title { font-size: 13px; color: #444; margin-bottom: 6px; }
+  svg text { font-family: inherit; fill: var(--muted); }
+  svg .axis-line { stroke: var(--hairline); stroke-width: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">BEHAVIORAL &middot; ORIENTATION DISCRIMINATION &middot; THRESHOLD VS CONTRAST</p>
+  <h1 class="title">Internal Noise &amp; Weber Fraction<br>in Amblyopia</h1>
+  <p class="subtitle">
+    How much does each eye's contrast-discrimination threshold rise with pedestal contrast?
+    Fitted internal noise (IN) and Weber fraction (Psi), measured separately for each eye in
+    11 control observers and 6 adults/children with amblyopia (subjects 26 and 32 excluded; see footnote).
+  </p>
+  <div class="legend">
+    <span><span class="swatch blue"></span>Control OD &middot; Fellow eye</span>
+    <span><span class="swatch orange"></span>Control OS &middot; Amblyopic eye</span>
+  </div>
+
+  <hr class="rule">
+
+  <p class="q-eyebrow">QUESTION 1</p>
+  <h2 class="question">What does each eye's TvC curve look like?</h2>
+  <p class="question-sub">
+    AIM-TvC+ dipper function: TvC(c) = &radic;((IN&sup2; + c&sup2;)&middot;(1+Psi)) &minus; c, across a range of
+    pedestal contrasts, from each subject's fitted final IN/Psi (not raw trial data &mdash; see repo CLAUDE.md).
+  </p>
+
+  <div id="subjectGrid" class="subject-grid"></div>
+
+  <table class="data-table" id="subjectTable"></table>
+  <p class="footnote"><span class="bound-mark">&dagger;</span> Psi estimate sits at the model's upper fitting bound (2.0) &mdash; likely an unreliable fit for that eye, included as-is.</p>
+
+  <hr class="rule">
+
+  <p class="q-eyebrow">QUESTION 2</p>
+  <h2 class="question">Do IN and Weber fraction differ between the eyes?</h2>
+  <p class="question-sub">
+    Four comparisons &times; two parameters. Log10-scale Welch/paired t-tests with a Mann-Whitney/Wilcoxon
+    cross-check, Holm-corrected within each parameter (2 families of 4 tests).
+  </p>
+
+  <div class="controls-row">
+    <span class="control-label">PARAMETER</span>
+    <div class="pillgroup" id="paramPills">
+      <button data-param="IN" class="active">Internal noise (IN)</button>
+      <button data-param="Psi">Weber fraction (Psi)</button>
+    </div>
+  </div>
+
+  <div class="group-curve-grid" id="groupCurveGrid"></div>
+
+  <table class="data-table" id="statsTable"></table>
+  <p class="footnote">Effect size = Cohen's d (independent) / dz (paired) on log10 values, with approx. 95% CI (Hedges normal approximation). None of the 8 comparisons reach significance after Holm correction, given the small amblyopic-eye groups (n=6) &mdash; but Psi shows a consistent moderate-to-large effect in the expected direction (amblyopic eye worse) that IN does not. <strong>|&Delta; mean| vs MCD</strong> compares the raw group-mean difference against the "minimum detectable cohort difference" reported in the AIM-TvC+ method paper's own test-retest data (IN: 0.0023, Psi: 0.1079) &mdash; an independent, non-circular check: both Psi comparisons involving the amblyopic eye exceed this reference, while neither IN comparison does.</p>
+
+  <hr class="rule">
+  <p class="footnote">
+    Subjects 26 (did not understand the task) and 32 (no TvC data recorded) excluded throughout.
+    Full pipeline, data survey, and source at
+    <a href="https://github.com/nutsapirtskhelava/tvc-stripe-demo" style="color:inherit;">github.com/nutsapirtskhelava/tvc-stripe-demo</a>.
+  </p>
+
+</div>
+
+<script id="dashboard-data" type="application/json">{"subjects": [{"subject": 24, "group": "Amblyopia", "eyes": [{"physicalEye": "OD", "role": "Fellow eye", "colorGroup": "blue", "IN": 0.0029, "Psi": 0.8374, "atBound": false}, {"physicalEye": "OS", "role": "Amblyopic eye", "colorGroup": "orange", "IN": 0.004, "Psi": 0.6907, "atBound": false}]}, {"subject": 25, "group": "Amblyopia", "eyes": [{"physicalEye": "OD", "role": "Amblyopic eye", "colorGroup": "orange", "IN": 0.0038, "Psi": 0.6969, "atBound": false}, {"physicalEye": "OS", "role": "Fellow eye", "colorGroup": "blue", "IN": 0.0036, "Psi": 0.6898, "atBound": false}]}, {"subject": 27, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.0089, "Psi": 0.4331, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.008, "Psi": 0.5433, "atBound": false}]}, {"subject": 28, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.0109, "Psi": 0.3205, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.0106, "Psi": 0.6327, "atBound": false}]}, {"subject": 30, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.0023, "Psi": 0.6566, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.0048, "Psi": 0.67, "atBound": false}]}, {"subject": 31, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.005, "Psi": 0.9057, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.0022, "Psi": 0.6401, "atBound": false}]}, {"subject": 33, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.008, "Psi": 1.2348, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.0034, "Psi": 0.8132, "atBound": false}]}, {"subject": 34, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.0028, "Psi": 1.0013, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.0019, "Psi": 1.0407, "atBound": false}]}, {"subject": 35, "group": "Amblyopia", "eyes": [{"physicalEye": "OD", "role": "Fellow eye", "colorGroup": "blue", "IN": 0.0034, "Psi": 1.3795, "atBound": false}, {"physicalEye": "OS", "role": "Amblyopic eye", "colorGroup": "orange", "IN": 0.0029, "Psi": 2.0, "atBound": true}]}, {"subject": 36, "group": "Amblyopia", "eyes": [{"physicalEye": "OD", "role": "Amblyopic eye", "colorGroup": "orange", "IN": 0.0137, "Psi": 0.563, "atBound": false}, {"physicalEye": "OS", "role": "Fellow eye", "colorGroup": "blue", "IN": 0.0129, "Psi": 0.4947, "atBound": false}]}, {"subject": 37, "group": "Amblyopia", "eyes": [{"physicalEye": "OD", "role": "Fellow eye", "colorGroup": "blue", "IN": 0.0112, "Psi": 0.8109, "atBound": false}, {"physicalEye": "OS", "role": "Amblyopic eye", "colorGroup": "orange", "IN": 0.0096, "Psi": 1.0852, "atBound": false}]}, {"subject": 38, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.008, "Psi": 0.9086, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.0072, "Psi": 1.1584, "atBound": false}]}, {"subject": 39, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.0057, "Psi": 1.0468, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.0165, "Psi": 0.7169, "atBound": false}]}, {"subject": 40, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.0117, "Psi": 1.3493, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.0111, "Psi": 0.6728, "atBound": false}]}, {"subject": 41, "group": "Amblyopia", "eyes": [{"physicalEye": "OD", "role": "Amblyopic eye", "colorGroup": "orange", "IN": 0.0019, "Psi": 1.0985, "atBound": false}, {"physicalEye": "OS", "role": "Fellow eye", "colorGroup": "blue", "IN": 0.0032, "Psi": 0.7633, "atBound": false}]}, {"subject": 42, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.0106, "Psi": 0.529, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.0078, "Psi": 1.0024, "atBound": false}]}, {"subject": 43, "group": "Control", "eyes": [{"physicalEye": "OD", "role": "Control OD", "colorGroup": "blue", "IN": 0.0086, "Psi": 0.7441, "atBound": false}, {"physicalEye": "OS", "role": "Control OS", "colorGroup": "orange", "IN": 0.0067, "Psi": 0.5796, "atBound": false}]}], "groupMeans": {"Control OD": {"n": 11, "IN": 0.0067, "Psi": 0.7637}, "Control OS": {"n": 11, "IN": 0.0061, "Psi": 0.7471}, "Fellow eye": {"n": 6, "IN": 0.005, "Psi": 0.7905}, "Amblyopic eye": {"n": 6, "IN": 0.0047, "Psi": 0.9298}, "All Controls": {"n": 22, "IN": 0.0064, "Psi": 0.7554}, "All Amblyopes": {"n": 12, "IN": 0.0049, "Psi": 0.8573}}, "stats": [{"comparison": "Control OD vs Fellow eye", "parameter": "IN", "design": "independent", "n1": 11, "n2": 6, "t_stat": 0.8816984871055658, "t_p": 0.4018597677106117, "u_stat": 37.0, "u_p": 0.7248540304303692, "effect_size": 0.4787189883157015, "effect_label": "Cohen's d (log10 scale)", "ci_low": -0.5306616396605959, "ci_high": 1.4880996162919988, "t_p_holm": 1.0, "u_p_holm": 1.0, "group_mean_diff": 0.0017, "exceeds_mcd": false}, {"comparison": "Control OS vs Amblyopic eye", "parameter": "IN", "design": "independent", "n1": 11, "n2": 6, "t_stat": 0.6789588398050951, "t_p": 0.5132316177728691, "u_stat": 39.5, "u_p": 0.5462475915691775, "effect_size": 0.354680347831386, "effect_label": "Cohen's d (log10 scale)", "ci_low": -0.6481216778084151, "ci_high": 1.3574823734711872, "t_p_holm": 1.0, "u_p_holm": 1.0, "group_mean_diff": 0.0014, "exceeds_mcd": false}, {"comparison": "Fellow eye vs Amblyopic eye", "parameter": "IN", "design": "paired", "n1": 6, "n2": 6, "t_stat": 0.57240847379092, "t_p": 0.5918208539702479, "u_stat": 8.0, "u_p": 0.6875, "effect_size": 0.233684780872172, "effect_label": "Cohen's dz (log10 scale)", "ci_low": -0.579485003081023, "ci_high": 1.046854564825367, "t_p_holm": 1.0, "u_p_holm": 1.0, "group_mean_diff": 0.0003, "exceeds_mcd": false}, {"comparison": "Control OD vs Control OS", "parameter": "IN", "design": "paired", "n1": 11, "n2": 11, "t_stat": 0.5853410700768168, "t_p": 0.571290102128184, "u_stat": 18.0, "u_p": 0.2060546875, "effect_size": 0.1764869730754479, "effect_label": "Cohen's dz (log10 scale)", "ci_low": -0.4195157153146641, "ci_high": 0.7724896614655601, "t_p_holm": 1.0, "u_p_holm": 0.82421875, "group_mean_diff": 0.0006, "exceeds_mcd": false}, {"comparison": "Control OD vs Fellow eye", "parameter": "Psi", "design": "independent", "n1": 11, "n2": 6, "t_stat": -0.1795279548502803, "t_p": 0.8602265672269122, "u_stat": 34.0, "u_p": 0.9612152553329024, "effect_size": -0.0831558288313324, "effect_label": "Cohen's d (log10 scale)", "ci_low": -1.0783384780251613, "ci_high": 0.9120268203624964, "t_p_holm": 1.0, "u_p_holm": 1.0, "group_mean_diff": 0.0268, "exceeds_mcd": false}, {"comparison": "Control OS vs Amblyopic eye", "parameter": "Psi", "design": "independent", "n1": 11, "n2": 6, "t_stat": -1.0776812987551023, "t_p": 0.3185304023930704, "u_stat": 22.0, "u_p": 0.3010665804783452, "effect_size": -0.6497622140153673, "effect_label": "Cohen's d (log10 scale)", "ci_low": -1.6713129894555503, "ci_high": 0.3717885614248158, "t_p_holm": 0.9555912071792114, "u_p_holm": 0.9031997414350356, "group_mean_diff": 0.1827, "exceeds_mcd": true}, {"comparison": "Fellow eye vs Amblyopic eye", "parameter": "Psi", "design": "paired", "n1": 6, "n2": 6, "t_stat": -1.7734935356082095, "t_p": 0.1363326955594406, "u_stat": 3.0, "u_p": 0.15625, "effect_size": -0.7240257040607637, "effect_label": "Cohen's dz (log10 scale)", "ci_low": -1.6414396876668085, "ci_high": 0.1933882795452809, "t_p_holm": 0.5453307822377627, "u_p_holm": 0.625, "group_mean_diff": 0.1393, "exceeds_mcd": true}, {"comparison": "Control OD vs Control OS", "parameter": "Psi", "design": "paired", "n1": 11, "n2": 11, "t_stat": 0.1642787209953075, "t_p": 0.8727847689462629, "u_stat": 28.0, "u_p": 0.7001953125, "effect_size": 0.0495318980528104, "effect_label": "Cohen's dz (log10 scale)", "ci_low": -0.5418289177125079, "ci_high": 0.6408927138181287, "t_p_holm": 1.0, "u_p_holm": 1.0, "group_mean_diff": 0.0166, "exceeds_mcd": false}], "mcd": {"IN": 0.0023, "Psi": 0.1079}}</script>
+<script>
+const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
+const COLORS = { blue: '#1b3a5e', orange: '#c1440e' };
+const CONTRAST_MIN = 0.001, CONTRAST_MAX = 0.9;
+const N_POINTS = 60;
+
+// AIM-TvC+ dipper function (Skerswetat et al. method paper, eq. 3):
+// TvC(c) = sqrt((IN^2 + c^2) * (1 + Psi)) - c -- dips down before rising, not monotonic
+function threshold(c, IN, Psi) { return Math.sqrt((IN * IN + c * c) * (1 + Psi)) - c; }
+
+function logRange(min, max, n) {
+  const out = [];
+  const lo = Math.log10(min), hi = Math.log10(max);
+  for (let i = 0; i < n; i++) out.push(Math.pow(10, lo + (hi - lo) * i / (n - 1)));
+  return out;
+}
+const CONTRASTS = logRange(CONTRAST_MIN, CONTRAST_MAX, N_POINTS);
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+// draws one log-log TvC panel into an existing <svg>, given a list of {IN, Psi, color}
+function drawPanel(svg, curves, opts) {
+  opts = opts || {};
+  const W = svg.viewBox.baseVal.width, H = svg.viewBox.baseVal.height;
+  const m = { left: 34, right: 8, top: 6, bottom: 20 };
+  const innerW = W - m.left - m.right, innerH = H - m.top - m.bottom;
+
+  let yMin = Infinity, yMax = -Infinity;
+  const series = curves.map(c => {
+    const ys = CONTRASTS.map(ct => threshold(ct, c.IN, c.Psi));
+    yMin = Math.min(yMin, ...ys);
+    yMax = Math.max(yMax, ...ys);
+    return { ys, color: c.color };
+  });
+  const yLo = Math.log10(yMin) - 0.15, yHi = Math.log10(yMax) + 0.15;
+  const xLo = Math.log10(CONTRAST_MIN), xHi = Math.log10(CONTRAST_MAX);
+
+  const px = v => m.left + (Math.log10(v) - xLo) / (xHi - xLo) * innerW;
+  const py = v => m.top + innerH - (Math.log10(v) - yLo) / (yHi - yLo) * innerH;
+
+  svg.appendChild(svgEl('line', { x1: m.left, y1: m.top + innerH, x2: m.left + innerW, y2: m.top + innerH, class: 'axis-line' }));
+  svg.appendChild(svgEl('line', { x1: m.left, y1: m.top, x2: m.left, y2: m.top + innerH, class: 'axis-line' }));
+
+  if (opts.ticks !== false) {
+    [0.01, 0.1, 1].forEach(v => {
+      if (v < CONTRAST_MIN || v > CONTRAST_MAX) return;
+      const t = svgEl('text', { x: px(v), y: H - 4, 'font-size': 9, 'text-anchor': 'middle' });
+      t.textContent = v;
+      svg.appendChild(t);
+    });
+  }
+
+  series.forEach(s => {
+    const d = CONTRASTS.map((c, i) => `${i === 0 ? 'M' : 'L'}${px(c).toFixed(1)},${py(s.ys[i]).toFixed(1)}`).join(' ');
+    svg.appendChild(svgEl('path', { d, fill: 'none', stroke: s.color, 'stroke-width': opts.strokeWidth || 2 }));
+  });
+}
+
+// ---- Question 1: subject small multiples ----
+const grid = document.getElementById('subjectGrid');
+DATA.subjects.forEach(s => {
+  const panel = document.createElement('div');
+  panel.className = 'subject-panel';
+  const head = document.createElement('div');
+  head.className = 'subject-panel-head';
+  head.innerHTML = `<span class="sid">${s.subject}</span><span class="grp">${s.group}</span>`;
+  panel.appendChild(head);
+  const svg = svgEl('svg', { viewBox: '0 0 190 110', width: '100%', height: '100' });
+  panel.appendChild(svg);
+  grid.appendChild(panel);
+  drawPanel(svg, s.eyes.map(e => ({ IN: e.IN, Psi: e.Psi, color: COLORS[e.colorGroup] })));
+});
+
+// subject table
+const subjTable = document.getElementById('subjectTable');
+subjTable.innerHTML = `<tr><th>Subject</th><th>Group</th><th>Eye</th><th>Role</th><th class="num">IN</th><th class="num">Psi</th></tr>` +
+  DATA.subjects.flatMap(s => s.eyes.map(e => `<tr>
+    <td>${s.subject}</td><td>${s.group}</td><td>${e.physicalEye}</td>
+    <td><span class="dot ${e.colorGroup}"></span>${e.role}</td>
+    <td class="num">${e.IN.toFixed(4)}</td>
+    <td class="num">${e.Psi.toFixed(4)}${e.atBound ? '<span class="bound-mark"> &dagger;</span>' : ''}</td>
+  </tr>`)).join('');
+
+// ---- Question 2: group curves + stats, toggled by parameter ----
+// each panel compares exactly 2 curves: first label = blue, second = orange
+function renderGroupCurves() {
+  const container = document.getElementById('groupCurveGrid');
+  container.innerHTML = '';
+  const defs = [
+    { title: 'Control OD vs OS', labels: ['Control OD', 'Control OS'] },
+    { title: 'Amblyopic vs Fellow eye', labels: ['Fellow eye', 'Amblyopic eye'] },
+    { title: 'Amblyopes vs Controls (both eyes pooled)', labels: ['All Controls', 'All Amblyopes'] },
+  ];
+  defs.forEach(def => {
+    const wrap = document.createElement('div');
+    const label = document.createElement('div');
+    label.className = 'panel-title';
+    label.textContent = def.title;
+    wrap.appendChild(label);
+    const svg = svgEl('svg', { viewBox: '0 0 320 180', width: '100%', height: '170' });
+    wrap.appendChild(svg);
+    container.appendChild(wrap);
+    const colors = [COLORS.blue, COLORS.orange];
+    const curves = def.labels.map((l, i) => ({
+      IN: DATA.groupMeans[l].IN, Psi: DATA.groupMeans[l].Psi, color: colors[i],
+    }));
+    drawPanel(svg, curves, { strokeWidth: 2.5 });
+    const legend = document.createElement('div');
+    legend.style.fontSize = '12px';
+    legend.style.color = '#555';
+    legend.style.marginTop = '4px';
+    legend.innerHTML = def.labels.map((l, i) =>
+      `<span class="dot ${i === 0 ? 'blue' : 'orange'}"></span>${l} (n=${DATA.groupMeans[l].n})`
+    ).join('&nbsp;&nbsp;');
+    wrap.appendChild(legend);
+  });
+}
+renderGroupCurves();
+
+function renderStatsTable(param) {
+  const rows = DATA.stats.filter(r => r.parameter === param);
+  const table = document.getElementById('statsTable');
+  table.innerHTML = `<tr><th>Comparison</th><th>Design</th><th class="num">n1</th><th class="num">n2</th>
+    <th class="num">t_p (Holm)</th><th class="num">u_p (Holm)</th><th class="num">Effect size</th><th class="num">95% CI</th>
+    <th class="num">|&Delta; mean|</th><th class="num">vs MCD</th></tr>` +
+    rows.map(r => {
+      const sig = r.t_p_holm < 0.05;
+      return `<tr>
+        <td>${r.comparison}</td><td>${r.design}</td>
+        <td class="num">${r.n1}</td><td class="num">${r.n2}</td>
+        <td class="num"><span class="sig ${sig ? 'yes' : 'no'}">${r.t_p_holm.toFixed(3)}</span></td>
+        <td class="num">${r.u_p_holm.toFixed(3)}</td>
+        <td class="num">${r.effect_size.toFixed(2)}</td>
+        <td class="num">[${r.ci_low.toFixed(2)}, ${r.ci_high.toFixed(2)}]</td>
+        <td class="num">${r.group_mean_diff.toFixed(4)}</td>
+        <td class="num"><span class="sig ${r.exceeds_mcd ? 'yes' : 'no'}">${r.exceeds_mcd ? 'exceeds' : 'below'}</span></td>
+      </tr>`;
+    }).join('');
+}
+renderStatsTable('IN');
+
+document.getElementById('paramPills').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('#paramPills button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderStatsTable(btn.dataset.param);
+});
+</script>
+</body>
+</html>

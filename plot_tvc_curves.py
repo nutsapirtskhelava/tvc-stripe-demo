@@ -12,13 +12,16 @@ measured thresholds at each tested contrast, this script plots what the
 fitted noise model predicts the threshold would be across a range of
 contrasts:
 
-    threshold(c) = sqrt(IN^2 + (Psi * c)^2)
+    TvC(c) = sqrt((IN^2 + c^2) * (1 + Psi)) - c
 
-This is the standard additive-plus-multiplicative noise model: IN sets the
-threshold floor at low contrast (c -> 0), and Psi sets the slope at high
-contrast. Run analyze_WF_internal_noise.m first if you want the statistical
-tests on IN/Psi themselves -- this script only visualizes the resulting curve
-shape.
+This is the exact dipper-function formula from the AIM-TvC+ method paper
+(Skerswetat et al., Manuscript_TvC_R1.pdf, eq. 3) that this dataset's IN/Psi
+columns were fit with -- confirmed by the matching column names (IN, Psi,
+slopeEsts=sigma, minErrEsts=epsilon), chart structure, and tablet/ring
+interface. It produces the real facilitation dip (minimum at c = IN/sqrt(Psi))
+before the rising limb, unlike a naive sqrt(IN^2 + (Psi*c)^2) monotonic model.
+Run analyze_WF_internal_noise.m if you want the statistical tests on IN/Psi
+themselves -- this script only visualizes the resulting curve shape.
 
 Group curves use the geometric mean (not arithmetic mean) of subject-level
 IN/Psi, matching analyze_WF_internal_noise.m's log10-scale convention -- these
@@ -52,16 +55,17 @@ EXCLUDE_SUBJECTS = [26, 32]
 # of arithmetic mean -- it's also less distorted by the Psi=2.0 ceiling-pinned values.
 LOG_FLOOR = 1e-4  # replaces 0 before log, in case a Final value is ever exactly 0
 
-# contrast range to evaluate the model over (log-spaced, matches typical pedestal range)
-CONTRAST_RANGE = np.logspace(np.log10(0.005), np.log10(1.0), 200)
+# contrast range to evaluate the model over: matches the actual pedestal range
+# used in the AIM-TvC+ task (0.001-0.9, log-spaced across 16 steps per the method paper)
+CONTRAST_RANGE = np.logspace(np.log10(0.001), np.log10(0.9), 200)
 
 OUT_DIR = "results"
 OUT_FILE = f"{OUT_DIR}/Fig5_TvC_curves.png"
 
 
 def tvc_threshold(contrast, internal_noise, weber_fraction):
-    """Additive + multiplicative noise model: threshold(c) = sqrt(IN^2 + (Psi*c)^2)."""
-    return np.sqrt(internal_noise ** 2 + (weber_fraction * contrast) ** 2)
+    """AIM-TvC+ dipper function: TvC(c) = sqrt((IN^2 + c^2) * (1 + Psi)) - c."""
+    return np.sqrt((internal_noise ** 2 + contrast ** 2) * (1 + weber_fraction)) - contrast
 
 
 def geometric_mean(values):
@@ -155,10 +159,10 @@ def main():
     g = groups[check_label]
     mean_in = geometric_mean(g["IN"].values)
     mean_psi = geometric_mean(g["Psi"].values)
-    manual = (mean_in ** 2 + (mean_psi * check_contrast) ** 2) ** 0.5
+    manual = ((mean_in ** 2 + check_contrast ** 2) * (1 + mean_psi)) ** 0.5 - check_contrast
     print(
         f"\nHand check -- {check_label} at contrast={check_contrast}: "
-        f"sqrt({mean_in:.4f}^2 + ({mean_psi:.4f} * {check_contrast})^2) = {manual:.4f}"
+        f"sqrt(({mean_in:.4f}^2 + {check_contrast}^2) * (1 + {mean_psi:.4f})) - {check_contrast} = {manual:.4f}"
     )
 
 

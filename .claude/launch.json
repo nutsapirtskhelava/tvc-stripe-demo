@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "static-server",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-c", "import os,http.server,socketserver; os.chdir('/Users/nutsa/Desktop/TvC 2'); socketserver.TCPServer(('',8745), http.server.SimpleHTTPRequestHandler).serve_forever()"],
+      "port": 8745
+    }
+  ]
+}
