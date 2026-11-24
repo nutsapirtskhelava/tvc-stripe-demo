@@ -331,7 +331,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <p class="subtitle">
     How much does each eye's contrast-discrimination threshold rise with pedestal contrast?
     Fitted internal noise (IN) and Weber fraction (Psi), measured separately for each eye in
-    11 control observers and 6 adults/children with amblyopia (subjects 26 and 32 excluded; see footnote).
+    11 child control observers (ages 6&ndash;17) and 6 children with amblyopia (ages 6&ndash;16)
+    (subjects 26 and 32 excluded; see footnote).
   </p>
   <div class="legend">
     <span><span class="swatch blue"></span>Control OD &middot; Fellow eye</span>
