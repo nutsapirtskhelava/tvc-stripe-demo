@@ -19,3 +19,16 @@ age, sex, diagnosis, VA, stereoacuity, etc.) are approved for inspection/analysi
 ### Git rule
 Raw subject-level files (the two CSVs and the combined xlsx) are excluded from git via
 `.gitignore` and must never be pushed to GitHub, even de-identified.
+
+### Data survey
+Full read-only survey of files, subject counts, and known inconsistencies: see `notes/data-map.md`.
+
+### Subject exclusions (per user, 2026-11-24)
+Exclude subjects **26** and **32** completely from all analyses (not just the `.m` script's stats).
+
+### Clarified (not actual data issues)
+- Dates embedded in Stereoacuity / Worth 4 dot fields (e.g. "07/23/2026") = last clinic visit
+  documentation date, not an error. Ignore the date, use the measurement part only.
+- "Stereo (secs)" values with a trailing `?` (e.g. "3500?") = treat as the plain numeric value;
+  the `?` carries no special meaning.
+- "Eye Dominance" column is not needed for any analysis.

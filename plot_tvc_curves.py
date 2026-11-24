@@ -40,8 +40,8 @@ DATA_FILE = "amblyopia_control_OD_OS_all_subjects-2.xlsx"
 SHEET = "AllData"
 FINAL_CHART_NUM = 6  # the "Final" row per subject/eye holds the overall fitted IN/Psi
 
-# same exclusion as analyze_WF_internal_noise.m: subject 26 did not understand the task
-EXCLUDE_SUBJECTS = [26]
+# excluded per user instruction: 26 did not understand the task; 32 has no TvC data
+EXCLUDE_SUBJECTS = [26, 32]
 
 # IN/Psi are noise/threshold-type parameters: right-skewed, bounded at zero, so
 # geometric mean (matches the .m script's log10-scale convention) is used instead
