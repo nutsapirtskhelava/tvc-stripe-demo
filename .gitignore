@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+data/
+
+# de-identified subject-level files: not for git/GitHub, even de-identified
+AIM TvC Subjects Deidentified (Amblyopia).csv
+AIM TvC Subjects Deidentified (Control 2).csv
+amblyopia_control_OD_OS_all_subjects-2.xlsx

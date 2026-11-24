@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TvC Stripe-Rings Demo</title>
+<style>
+  body {
+    font-family: -apple-system, Helvetica, Arial, sans-serif;
+    background: #202020;
+    color: #eee;
+    text-align: center;
+    padding: 20px;
+  }
+  h1 { font-size: 20px; font-weight: 600; }
+  p.sub { color: #aaa; font-size: 14px; margin-top: -8px; }
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(4, 90px);
+    grid-template-rows: repeat(4, 90px);
+    gap: 10px;
+    justify-content: center;
+    margin: 24px auto;
+    width: fit-content;
+  }
+  canvas.ring {
+    background: #808080;
+    border-radius: 6px;
+    cursor: pointer;
+    outline: 2px solid transparent;
+  }
+  canvas.ring:hover { outline: 2px solid #5ab0ff; }
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .controls label { font-size: 14px; }
+  #eyeToggle button {
+    background: #333; color: #eee; border: 1px solid #555;
+    padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 14px;
+  }
+  #eyeToggle button.active { background: #5ab0ff; color: #111; border-color: #5ab0ff; }
+  #feedback { font-size: 15px; height: 22px; margin-top: 8px; }
+  #feedback.correct { color: #6ee76e; }
+  #feedback.wrong { color: #ff6b6b; }
+  #stats { font-size: 14px; color: #ccc; margin-top: 6px; }
+  #resetBtn {
+    background: #333; color: #eee; border: 1px solid #555;
+    padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 14px;
+  }
+  #resetBtn:hover { background: #444; }
+  #staircasePlot { margin-top: 14px; }
+</style>
+</head>
+<body>
+
+<h1>Contrast Discrimination: Stripe-Ring Demo</h1>
+<p class="sub">Toy version of the 4&times;4 oriented-stripe-ring task &mdash; tap directly on a ring in the direction the stripes run. Each ring has its own contrast (spread around the current staircase level), and the staircase (3-down/1-up) adapts based on your responses.</p>
+
+<div class="controls">
+  <label for="contrast">Current contrast (set by staircase): <span id="contrastVal">0.50</span></label>
+  <input type="range" id="contrast" min="0.02" max="1" step="0.01" value="0.5" disabled>
+
+  <div id="eyeToggle">
+    <button id="odBtn" class="active">OD (right eye)</button>
+    <button id="osBtn">OS (left eye)</button>
+  </div>
+
+  <button id="resetBtn">Reset staircase</button>
+</div>
+
+<div id="grid"></div>
+
+<div id="feedback"></div>
+<div id="stats">Correct: 0 / 0 &nbsp;|&nbsp; Reversals: 0</div>
+<canvas id="staircasePlot" width="500" height="120"></canvas>
+
+<script>
+const N = 16;
+const SIZE = 90;
+const RADIUS = 38;
+const INNER_RADIUS = 10;
+const EDGE_FEATHER = 2.5; // px of smooth falloff at inner/outer ring edges, avoids hard-edge jaggies
+const SPATIAL_FREQ = 0.5; // cycles per pixel radius, tuned for visibility
+const SS = 3; // supersampling factor: render at SS x resolution then box-filter down, avoids moire/aliasing ("squiggly" stripes)
+const ORIENTATIONS = [0, 45, 90, 135]; // degrees: horizontal, diagonal /, vertical, diagonal \
+// each ring on the grid samples a different point around the staircase contrast,
+// so one screen covers several points on the eventual TvC curve at once
+const RING_MULTIPLIERS = [0.3, 0.45, 0.6, 0.75, 0.9, 1.0, 1.1, 1.25,
+                           1.4, 1.55, 1.7, 1.85, 2.0, 2.2, 2.4, 2.6];
+
+let rings = [];
+let correctCount = 0;
+let totalCount = 0;
+
+// --- adaptive staircase (3-down / 1-up, converges near ~79% correct) ---
+const staircase = {
+  contrast: 0.5,
+  stepSize: 0.08,
+  minStep: 0.01,
+  correctStreak: 0,
+  lastDirection: null, // 'up' | 'down'
+  reversals: 0,
+  history: [] // {trial, contrast}
+};
+
+function staircaseUpdate(wasCorrect) {
+  let direction = null;
+  if (wasCorrect) {
+    staircase.correctStreak++;
+    if (staircase.correctStreak >= 3) {
+      direction = 'down';
+      staircase.contrast = Math.max(0.02, staircase.contrast - staircase.stepSize);
+      staircase.correctStreak = 0;
+    }
+  } else {
+    staircase.correctStreak = 0;
+    direction = 'up';
+    staircase.contrast = Math.min(1.0, staircase.contrast + staircase.stepSize);
+  }
+  if (direction && staircase.lastDirection && direction !== staircase.lastDirection) {
+    staircase.reversals++;
+    staircase.stepSize = Math.max(staircase.minStep, staircase.stepSize * 0.6);
+  }
+  if (direction) staircase.lastDirection = direction;
+  staircase.history.push({ trial: staircase.history.length + 1, contrast: staircase.contrast });
+}
+
+function staircaseReset() {
+  staircase.contrast = 0.5;
+  staircase.stepSize = 0.08;
+  staircase.correctStreak = 0;
+  staircase.lastDirection = null;
+  staircase.reversals = 0;
+  staircase.history = [];
+}
+
+function shuffled(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function makeRings() {
+  rings = [];
+  const multipliers = shuffled(RING_MULTIPLIERS);
+  for (let i = 0; i < N; i++) {
+    rings.push({
+      orientation: ORIENTATIONS[Math.floor(Math.random() * ORIENTATIONS.length)],
+      multiplier: multipliers[i],
+      answered: false
+    });
+  }
+}
+
+function drawRing(canvas, ring) {
+  const ctx = canvas.getContext('2d');
+  const cx = (SIZE * SS) / 2, cy = (SIZE * SS) / 2;
+  const hiSize = SIZE * SS;
+  const hi = new Float32Array(hiSize * hiSize);
+  const angleRad = ring.orientation * Math.PI / 180;
+  const contrast = Math.min(1, Math.max(0.02, staircase.contrast * ring.multiplier));
+
+  // render at SS x resolution with a feathered (anti-aliased) annulus edge
+  for (let y = 0; y < hiSize; y++) {
+    for (let x = 0; x < hiSize; x++) {
+      const dx = x - cx, dy = y - cy;
+      const dist = Math.sqrt(dx*dx + dy*dy) / SS; // back to canvas-px units
+      let mask = 0;
+      if (dist >= INNER_RADIUS - EDGE_FEATHER && dist <= RADIUS + EDGE_FEATHER) {
+        const innerFade = Math.min(1, Math.max(0, (dist - (INNER_RADIUS - EDGE_FEATHER)) / EDGE_FEATHER));
+        const outerFade = Math.min(1, Math.max(0, ((RADIUS + EDGE_FEATHER) - dist) / EDGE_FEATHER));
+        mask = Math.min(innerFade, outerFade);
+      }
+      const proj = (dx * Math.cos(angleRad) + dy * Math.sin(angleRad)) / SS;
+      const grating = Math.sin(proj * SPATIAL_FREQ);
+      hi[y * hiSize + x] = 128 + grating * 127 * contrast * mask;
+    }
+  }
+
+  // box-filter downsample hi -> SIZE x SIZE to remove aliasing
+  const imgData = ctx.createImageData(SIZE, SIZE);
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      let sum = 0;
+      for (let sy = 0; sy < SS; sy++) {
+        for (let sx = 0; sx < SS; sx++) {
+          sum += hi[(y * SS + sy) * hiSize + (x * SS + sx)];
+        }
+      }
+      const lum = sum / (SS * SS);
+      const idx = (y * SIZE + x) * 4;
+      imgData.data[idx] = lum;
+      imgData.data[idx+1] = lum;
+      imgData.data[idx+2] = lum;
+      imgData.data[idx+3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+function drawStaircasePlot() {
+  const canvas = document.getElementById('staircasePlot');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  const hist = staircase.history;
+  if (hist.length < 2) return;
+  const pad = 10;
+  const maxTrials = Math.max(hist.length, 2);
+  const xStep = (w - 2 * pad) / (maxTrials - 1);
+  ctx.strokeStyle = '#5ab0ff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  hist.forEach((pt, i) => {
+    const px = pad + i * xStep;
+    const py = h - pad - pt.contrast * (h - 2 * pad);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+  ctx.fillStyle = '#888';
+  ctx.font = '11px sans-serif';
+  ctx.fillText('contrast vs. trial', pad, 12);
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  rings.forEach((ring, i) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = SIZE;
+    canvas.height = SIZE;
+    canvas.className = 'ring';
+    canvas.dataset.index = i;
+    drawRing(canvas, ring);
+    canvas.addEventListener('click', (e) => onRingTap(i, e));
+    grid.appendChild(canvas);
+  });
+}
+
+// the tap itself is the response: where on the ring they touch, relative to
+// its center, is read as the direction they're indicating the stripes run
+function onRingTap(i, event) {
+  const canvas = event.currentTarget;
+  const rect = canvas.getBoundingClientRect();
+  const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+  const cx = SIZE / 2, cy = SIZE / 2;
+  const dx = x - cx, dy = y - cy;
+
+  let angle = Math.atan2(dy, dx) * 180 / Math.PI; // -180..180
+  angle = ((angle % 180) + 180) % 180;            // orientation is undirected: fold to 0..180
+  let choice = Math.round(angle / 45) * 45;
+  if (choice === 180) choice = 0;
+
+  onAnswer(i, choice);
+}
+
+function onAnswer(i, choice) {
+  const ring = rings[i];
+  totalCount++;
+  const wasCorrect = choice === ring.orientation;
+  const feedback = document.getElementById('feedback');
+  if (wasCorrect) {
+    correctCount++;
+    feedback.textContent = 'Correct';
+    feedback.className = 'correct';
+  } else {
+    feedback.textContent = 'Not quite — try the next one';
+    feedback.className = 'wrong';
+  }
+
+  staircaseUpdate(wasCorrect);
+  document.getElementById('contrast').value = staircase.contrast;
+  document.getElementById('contrastVal').textContent = staircase.contrast.toFixed(2);
+  document.getElementById('stats').textContent =
+    `Correct: ${correctCount} / ${totalCount} | Reversals: ${staircase.reversals}`;
+  drawStaircasePlot();
+
+  // replace the answered ring with a fresh random one (new orientation and contrast sample)
+  rings[i] = {
+    orientation: ORIENTATIONS[Math.floor(Math.random() * ORIENTATIONS.length)],
+    multiplier: RING_MULTIPLIERS[Math.floor(Math.random() * RING_MULTIPLIERS.length)],
+    answered: false
+  };
+  renderGrid();
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  staircaseReset();
+  correctCount = 0;
+  totalCount = 0;
+  document.getElementById('contrast').value = staircase.contrast;
+  document.getElementById('contrastVal').textContent = staircase.contrast.toFixed(2);
+  document.getElementById('stats').textContent = `Correct: 0 / 0 | Reversals: 0`;
+  document.getElementById('feedback').textContent = '';
+  drawStaircasePlot();
+  makeRings();
+  renderGrid();
+});
+
+document.getElementById('odBtn').addEventListener('click', () => {
+  document.getElementById('odBtn').classList.add('active');
+  document.getElementById('osBtn').classList.remove('active');
+  makeRings();
+  renderGrid();
+});
+document.getElementById('osBtn').addEventListener('click', () => {
+  document.getElementById('osBtn').classList.add('active');
+  document.getElementById('odBtn').classList.remove('active');
+  makeRings();
+  renderGrid();
+});
+
+makeRings();
+renderGrid();
+</script>
+
+</body>
+</html>
